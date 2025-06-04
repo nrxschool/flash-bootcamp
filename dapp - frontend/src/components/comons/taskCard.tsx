@@ -3,11 +3,13 @@ import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 
 
 interface TaskCardProps {
-    title: string;
     description: string;
+    completed: boolean;
     createdAt: string;
     dueDate: string;
     stake: number;
+    title: string;
+    handleCompleteTask: (id: string) => void;
 }
 
 export function TaskCard({ title, description, createdAt, dueDate, stake }: TaskCardProps) {

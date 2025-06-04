@@ -1,4 +1,42 @@
-// SPDX-License-Identifier: UNLICENSED
+# criar um servidor express graphql que:
+- ouça eventos da blockchain
+- esses eventos são do smartcontract: 
+- os eventos são esses:
+- e servir via graphql para a seguinte query: query {
+  tasks(
+    where: { owner: "0xabc", status: "pending" | "done" }
+  ) {
+    id
+    name
+    description
+    priority
+    value
+    createdAt
+    dueDate
+  }
+}
+
+
+
+# fluxo completo:
+1. ouve o evento
+2. filtra
+3. normaliza os dados
+4. salva no banco de dados (postgree)
+5. serve via graphql
+
+
+# As mutation devem ser:
+- busca pelo dono da task: task.owner
+- busca pelo status "pending" | "done": task.complete
+- busca ordenada pelo valor de stake: task.stake
+- busca pela mais urgente, ordenada pelo: task.dueDate
+- Apenas implemente a mutation "busca pelo dono"
+- as outras devem ser mockadas
+
+
+# Contexto:
+- meu contrato solidity:// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
 //CRUD
@@ -88,3 +126,10 @@ contract TaskManager {
         return tasks[_id];
     }
 }
+
+
+# REGRAS
+- seja minimalista
+- coloque comentários em PTBR
+- instale o minimo de libs possivel
+- use as libs: apollo, viem, express

@@ -7,11 +7,11 @@ import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { StakeCard } from "@/components/comons/stakeCard";
+
 import { Label } from "@/components/ui/label";
 import { TaskCard } from "@/components/comons/taskCard";
 import { useEffect, useState } from "react";
-import { createWalletClient, custom } from "viem";
+import { Address, createWalletClient, custom } from "viem";
 import { anvil } from "viem/chains";
 
 
@@ -28,7 +28,7 @@ const tasks = [
 export default function Home() {
 
  const [walletClient, setWalletClient] = useState<any>(null)
- const [address, setAddress] = useState<string | null>(null)
+ const [account, setAccount] = useState<Address>()
 
 useEffect(() => {
   const client = createWalletClient({
@@ -43,11 +43,11 @@ useEffect(() => {
  const connectWallet = async () => {
   if(!(window as any).ethereum) return
   const [address] = await walletClient.requestAddresses()
-  setAddress(address)
+  setAccount(address)
  }
 
  const disconnectWallet = async () => {
-  setAddress(null)
+  setAccount(undefined)
  }
 
 
@@ -59,7 +59,7 @@ useEffect(() => {
           <h2 className="text-sm text-muted-foreground">Gerencie suas tarefas com segurança e confiança</h2>
       </div>
       {
-        !address ? (
+        !account ? (
           <Button onClick={connectWallet} className="cursor-pointer">
             <WalletIcon />
             <span>
@@ -68,7 +68,7 @@ useEffect(() => {
           </Button>
         ) : (
           <div className="flex items-center gap-2">
-            <span>{address}</span>
+            <span>{account}</span>
             <Button onClick={disconnectWallet}>
               <XIcon />
             </Button>
@@ -104,12 +104,7 @@ useEffect(() => {
               <Label>Data de vencimento</Label>
               <Input type="datetime-local" placeholder="Data de vencimento" />
               <Label>Stake</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <StakeCard />
-                <StakeCard />
-                <StakeCard />
-                <StakeCard />
-              </div>
+              <Input type="number" placeholder="Stake" />
               <Button>
                 <PlusIcon />
                 <span>Criar Tarefa</span>
@@ -127,7 +122,15 @@ useEffect(() => {
             </div>
           ) : (
             tasks.map((task) => (
-              <TaskCard key={task.title} title={task.title} description={task.description} createdAt={task.createdAt} dueDate={task.dueDate} stake={task.stake} />
+              <TaskCard 
+                key={task.title} 
+                title={task.title} 
+                description={task.description} 
+                createdAt={task.createdAt} 
+                dueDate={task.dueDate} 
+                stake={task.stake} 
+                
+                />
             ))
           )
         }

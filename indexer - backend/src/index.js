@@ -3,6 +3,7 @@ const express = require("express");
 const { ApolloServer } = require("@apollo/server");
 const { expressMiddleware } = require("@apollo/server/express4");
 const { json } = require("body-parser");
+const cors = require("cors");
 
 const { typeDefs } = require("./schema");
 const { resolvers } = require("./resolvers");
@@ -12,6 +13,12 @@ const { setupDatabase } = require("./database");
 // Configuração do servidor Express
 const app = express();
 const PORT = 4000;
+
+// Configuração do CORS
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
 
 // Configuração do Apollo Server
 const server = new ApolloServer({
@@ -26,7 +33,12 @@ async function startServer() {
     console.log("✅ Apollo Server inicializado");
 
     // Middleware do Apollo
-    app.use("/graphql", json(), expressMiddleware(server));
+    app.use("/graphql", json(), expressMiddleware(server, {
+      cors: {
+        origin: 'http://localhost:3000',
+        credentials: true
+      }
+    }));
     console.log("✅ GraphQL endpoint configurado em /graphql");
 
     // Inicializa o banco de dados

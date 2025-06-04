@@ -37,7 +37,6 @@ async function setupBlockchainListener() {
       address: contractAddress,
       event: taskCreatedEvent,
       onLogs: async (logs) => {
-        console.log(logs)
         for (const log of logs) {
           const taskData = normalizeTaskData(log);
           await db.saveTask(taskData);

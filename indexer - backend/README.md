@@ -2,7 +2,9 @@
 - ouça eventos da blockchain
 - esses eventos são do smartcontract: 
 - os eventos são esses:
-- e servir via graphql para a seguinte query: query {
+- e servir via graphql para a seguinte query:
+```js
+query {
   tasks(
     where: { owner: "0xabc", status: "pending" | "done" }
   ) {
@@ -15,6 +17,7 @@
     dueDate
   }
 }
+```
 
 
 

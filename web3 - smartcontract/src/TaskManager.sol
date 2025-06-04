@@ -21,11 +21,7 @@ contract TaskManager {
 
     Task[] public tasks;
 
-    function createTask(
-        string memory _title,
-        string memory _description,
-        uint256 _dueDate
-    ) public payable {
+    function createTask(string memory _title, string memory _description, uint256 _dueDate) public payable {
         Task memory task = Task({
             completedAt: 0,
             stake: msg.value,
@@ -82,9 +78,20 @@ contract TaskManager {
 
         task.isCompleted = true;
         task.completedAt = block.timestamp;
+
+        // Emit the TaskCompleted event
+        emit TaskCompleted({id: _id, createTask: task.createdAt, completedAt: task.completedAt});
+
+        // Return the stake to the user
+        (bool sent,) = msg.sender.call{value: task.stake}("");
+        require(sent, "Failed to send Ether");
     }
 
     function getTask(uint256 _id) public view returns (Task memory) {
         return tasks[_id];
+    }
+
+    function tasksCount() public view returns (uint256) {
+        return tasks.length;
     }
 }

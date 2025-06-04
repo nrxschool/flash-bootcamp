@@ -17,10 +17,12 @@ contract TaskManagerTest is Test {
 
         vm.prank(owner);
         vm.expectEmit();
-        emit TaskManager.TaskCreated(0, "Test Task", "This is a test task", 1717334400, block.timestamp, 0, false, owner);
+        emit TaskManager.TaskCreated(
+            0, "Test Task", "This is a test task", 1717334400, block.timestamp, 0, false, owner
+        );
         taskManager.createTask("Test Task", "This is a test task", 1717334400);
 
-        TaskManager.Task memory task = taskManager.getTask(0);  
+        TaskManager.Task memory task = taskManager.getTask(0);
         assertEq(task.title, "Test Task");
         assertEq(task.description, "This is a test task");
         assertEq(task.dueDate, 1717334400);
@@ -35,7 +37,6 @@ contract TaskManagerTest is Test {
         taskManager.createTask("Test Task", "This is a test task", block.timestamp + 100);
         taskManager.completeTask(0);
         assertEq(taskManager.getTask(0).isCompleted, true);
-
     }
 
     function testCompleteTaskRevertIfAlreadyCompleted() public {
@@ -44,6 +45,4 @@ contract TaskManagerTest is Test {
         vm.expectRevert(TaskManager.AlreadyCompleted.selector);
         taskManager.completeTask(0);
     }
-
-
 }

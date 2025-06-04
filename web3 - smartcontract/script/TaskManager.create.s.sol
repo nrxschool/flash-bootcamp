@@ -15,9 +15,9 @@ contract TaskManagerCreateScript is Script {
         taskManager = new TaskManager();
         console.log("TaskManager deployed at", address(taskManager));
 
-        taskManager.createTask("Buy milk", "Buy milk from the store", block.timestamp + 1000);
-        taskManager.createTask("Buy eggs", "Buy eggs from the store", block.timestamp + 1000);
-        taskManager.createTask("Buy bread", "Buy bread from the store", block.timestamp + 1000);
+        taskManager.createTask{value: 1 ether}("Buy milk", "Buy milk from the store", block.timestamp + 1000);
+        taskManager.createTask{value: 1.5 ether}("Buy eggs", "Buy eggs from the store", block.timestamp + 1000);
+        taskManager.createTask{value: 3.98 ether}("Buy bread", "Buy bread from the store", block.timestamp + 1000);
 
         vm.stopBroadcast();
     }

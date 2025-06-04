@@ -1,9 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, XIcon } from "lucide-react";
+import { PlusIcon, XIcon, WalletIcon } from "lucide-react";
 import { StatusCard } from "@/components/comons/statusCard";
-import { WalletIcon } from "lucide-react";
-import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -14,23 +12,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
 import { Label } from "@/components/ui/label";
 import { TaskCard } from "@/components/comons/taskCard";
 import { useEffect, useState } from "react";
-import {
-  Address,
-  createWalletClient,
-  custom,
-  etherUnits,
-  formatEther,
-  getContract,
-  parseEther,
-} from "viem";
-import { anvil } from "viem/chains";
+import { Address, formatEther, getContract, parseEther } from "viem";
 import { contractABI, contractAddress } from "@/lib/abi";
-import { publicClient } from "@/lib/client";
+import { publicClient, walletClient } from "@/lib/client";
+import { Switch } from "@/components/ui/switch";
 
+// Tipo para representar uma tarefa
 type Task = {
   stake: number;
   id: string;
@@ -42,24 +32,24 @@ type Task = {
 };
 
 export default function Home() {
-  const [walletClient, setWalletClient] = useState<any>(null);
+  // Estados do componente
   const [account, setAccount] = useState<Address>();
   const [contract, setContract] = useState<any>(null);
-  const [taskCount, setTaskCount] = useState<number>(0);
-
-  //variaveis de estado para as tarefas
+  const [useBlockchain, setUseBlockchain] = useState<boolean>(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  // Estado para nova tarefa
   const [newTask, setNewTask] = useState<Task>({
     id: "0",
     title: "teste",
     description: "teste1123132",
     dueDate: "",
     createdAt: "",
-    stake: 0,
+    stake: 1.8,
     isCompleted: false,
   });
 
-  //Inicializar o contrato com o endereco e ABI fornecidos
+  // Inicializa o contrato quando o componente é montado
   useEffect(() => {
     if (walletClient) {
       const contractInstance = getContract({
@@ -71,71 +61,113 @@ export default function Home() {
     }
   }, [walletClient]);
 
-  useEffect(() => {
-    const client = createWalletClient({
-      chain: anvil,
-      transport: custom((window as any).ethereum!),
-    });
+  // Conecta a carteira MetaMask
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      console.error("MetaMask não está instalado");
+      return;
+    }
 
-    setWalletClient(client);
-  }, []);
-
-  //funcao para carregar tarefas da blockchain
-  const loadTasks = async () => {
     try {
-      const loadedTasks: Task[] = [];
-      let id = 0;
+      const [address] = await walletClient.requestAddresses();
+      setAccount(address);
+    } catch (error) {
+      console.error("Erro ao conectar carteira:", error);
+    }
+  };
 
-      // Tentar carregar tarefas até encontrar uma que não existe
-      while (true) {
-        try {
-          const task = await contract.read.getTask(id);
-          console.log("Tarefa encontrada:", task);
+  // Desconecta a carteira
+  const disconnectWallet = async () => {
+    setAccount(undefined);
+    setTasks([]);
+  };
 
-          // Verificar se a tarefa pertence ao usuário conectado
-          if (task.owner.toLowerCase() === account.toLowerCase()) {
-            loadedTasks.push({
-              id: task.id.toString(),
-              title: task.title,
-              stake: Number(task.stake),
-              description: task.description,
-              dueDate: new Date(Number(task.dueDate) * 1000)
-                .toISOString()
-                .slice(0, 16),
-              createdAt: new Date(Number(task.createdAt) * 1000).toISOString(),
-              isCompleted: task.isCompleted,
-            });
-          }
-          id++;
-        } catch (error) {
-          // Quando não conseguir mais buscar tarefas, sair do loop
-          break;
+  // Carrega tarefas da blockchain
+  const loadTasksFromBlockchain = async () => {
+    const loadedTasks: Task[] = [];
+
+    try {
+      // Primeiro obtém o total de tasks
+      const taskCount = await contract.read.tasksCount();
+      console.log(`Total de tasks: ${taskCount}`); // Adicione esta linha para verificar o número de tasks retor
+
+      // Depois carrega cada uma
+      for (let id = 0; id < taskCount; id++) {
+        const task = await contract.read.getTask([id]);
+
+        if (task.owner === account) {
+          console.log(`Carregando task ${id}:`, task);
+          loadedTasks.push({
+            id: task.id.toString(),
+            title: task.title,
+            stake: Number(formatEther(task.stake)), // Convertemos de wei para ETH
+            description: task.description,
+            dueDate: new Date(Number(task.dueDate) * 1000)
+              .toISOString()
+              .slice(0, 16),
+            createdAt: new Date(Number(task.createdAt) * 1000).toISOString(),
+            isCompleted: task.isCompleted,
+          });
         }
       }
 
       setTasks(loadedTasks);
-      setTaskCount(id);
+      console.log(`Carregadas ${loadedTasks.length} tarefas da blockchain`);
     } catch (error) {
       console.error("Erro ao carregar tarefas:", error);
     }
-  }
-
-  const connectWallet = async () => {
-    if (!(window as any).ethereum) return;
-    const [address] = await walletClient.requestAddresses();
-    setAccount(address);
   };
 
-  const disconnectWallet = async () => {
-    setAccount(undefined);
-    setTasks([]); // Limpar tarefas ao desconectar
+  // Carrega tarefas do backend
+  const loadTasksFromBackend = async () => {
+    if (!account) return;
+
+    try {
+      const response = await fetch("http://localhost:4000/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `
+            query {
+              tasks(where: { owner: "${account}"}) {
+                title stake description dueDate createdAt isCompleted
+              }
+            }
+          `,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.data?.tasks) {
+        const loadedTasks = result.data.tasks.map((task: any) => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          stake: formatEther(task.stake),
+          dueDate: task.dueDate,
+          createdAt: task.createdAt,
+          isCompleted: task.isCompleted,
+        }));
+        setTasks(loadedTasks);
+        console.log(`Carregadas ${loadedTasks.length} tarefas do backend`);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar tarefas do backend:", error);
+    }
   };
 
-  //funcao para criar uma tarefa
+  // Carrega tarefas conforme fonte selecionada
+  const loadTasks = async () => {
+    if (useBlockchain) {
+      await loadTasksFromBlockchain();
+    } else {
+      await loadTasksFromBackend();
+    }
+  };
+
+  // Cria uma nova tarefa
   const handleCreateTask = async () => {
     if (!account || !walletClient) return;
-
-    // Validar campos obrigatórios
     if (!newTask.title || !newTask.description || !newTask.dueDate) {
       console.error("Todos os campos são obrigatórios");
       return;
@@ -143,14 +175,11 @@ export default function Home() {
 
     try {
       const dueDateTimestamp = new Date(newTask.dueDate).getTime();
+      const stakeInWei = parseEther(newTask.stake.toString());
 
       const { request } = await publicClient.simulateContract({
         account: account,
-        // 1e18
-        // 1 wei == 0.000000000000000001 ether (1e-18)
-        // 1000000000000000000 wei == 1 ether (1e18)
-        // 100 ==> 100 * 1e18 | 100 * 1e18 ==> 100
-        value: parseEther(newTask.stake.toString()),
+        value: stakeInWei,
         address: contractAddress,
         abi: contractABI,
         functionName: "createTask",
@@ -158,14 +187,10 @@ export default function Home() {
       });
 
       const hash = await walletClient.writeContract(request);
-
-      console.log("Tarefa criada com sucesso", hash);
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      console.log("Receipt", receipt);
-
-      // Recarregar tarefas após criar uma nova
+      await publicClient.waitForTransactionReceipt({ hash });
       await loadTasks();
 
+      // Reseta o formulário
       setNewTask({
         id: "",
         title: "",
@@ -180,7 +205,7 @@ export default function Home() {
     }
   };
 
-  //funcao para completar uma tarefa
+  // Marca tarefa como concluída
   const handleCompleteTask = async (id: string) => {
     if (!account || !walletClient || !id) return;
     try {
@@ -192,29 +217,21 @@ export default function Home() {
         args: [BigInt(id)],
       });
       const hash = await walletClient.writeContract(request);
-      console.log("Tarefa completada com sucesso", hash);
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      console.log("Receipt", receipt);
-
-      // Recarregar tarefas após completar
+      await publicClient.waitForTransactionReceipt({ hash });
       await loadTasks();
     } catch (error) {
       console.error("Erro ao completar tarefa", error);
     }
   };
 
-  //Carregar tarefas quando conectar carteira
+  // Carrega tarefas quando a conta ou contrato mudam
   useEffect(() => {
-
-    if (account && contract) {
-      loadTasks();
-    }
+    if (account && contract) loadTasks();
   }, [account, contract]);
-
-
 
   return (
     <div className="flex flex-col min-h-screen max-w-7xl mx-auto pt-10">
+      {/* Cabeçalho */}
       <div className="flex justify-between items-center">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold">Web3 TODO List</h1>
@@ -222,33 +239,54 @@ export default function Home() {
             Gerencie suas tarefas com segurança e confiança
           </h2>
         </div>
-        {!account ? (
-          <Button onClick={connectWallet} className="cursor-pointer">
-            <WalletIcon />
-            <span>Connect Wallet</span>
-          </Button>
-        ) : (
+
+        {/* Controle de conexão */}
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span>{account}</span>
-            <Button onClick={disconnectWallet}>
-              <XIcon />
-            </Button>
+            <span className="text-sm">Blockchain</span>
+            <Switch
+              checked={!useBlockchain}
+              onCheckedChange={() => {
+                setUseBlockchain(!useBlockchain);
+                loadTasks();
+              }}
+            />
           </div>
-        )}
+
+          {!account ? (
+            <Button onClick={connectWallet} className="cursor-pointer">
+              <WalletIcon />
+              <span>Connect Wallet</span>
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span>{account}</span>
+              <Button onClick={disconnectWallet}>
+                <XIcon />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Cards de status */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-10">
         <StatusCard title="Total de tarefas" value={tasks.length} />
         <StatusCard
-          title="Total de tarefas concluídas"
+          title="Tarefas concluídas"
           value={tasks.filter((task) => task.isCompleted).length}
         />
         <StatusCard
-          title="Total de tarefas pendentes"
+          title="Tarefas pendentes"
           value={tasks.filter((task) => !task.isCompleted).length}
         />
       </div>
+
+      {/* Lista de tarefas */}
       <div className="flex justify-between items-center mt-10">
         <h1 className="text-2xl font-bold">Tarefas</h1>
+
+        {/* Diálogo para nova tarefa */}
         <Dialog>
           <DialogTrigger asChild>
             <Button
@@ -260,14 +298,15 @@ export default function Home() {
               <span>Nova Tarefa</span>
             </Button>
           </DialogTrigger>
+
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Nova Tarefa</DialogTitle>
             </DialogHeader>
+
             <DialogDescription className="flex flex-col gap-4">
               <Label>Título</Label>
               <Input
-                type="text"
                 placeholder="Título da tarefa"
                 value={newTask.title}
                 onChange={(e) =>
@@ -275,6 +314,7 @@ export default function Home() {
                 }
                 disabled={!account}
               />
+
               <Label>Descrição</Label>
               <Textarea
                 placeholder="Descrição da tarefa"
@@ -284,13 +324,23 @@ export default function Home() {
                 }
                 disabled={!account}
               />
+
               <Label>Data de vencimento</Label>
               <Input
                 type="datetime-local"
-                placeholder="Data de vencimento"
                 value={newTask.dueDate}
                 onChange={(e) =>
                   setNewTask({ ...newTask, dueDate: e.target.value })
+                }
+                disabled={!account}
+              />
+
+              <Label>Valor (ETH)</Label>
+              <Input
+                type="number"
+                value={newTask.stake}
+                onChange={(e) =>
+                  setNewTask({ ...newTask, stake: Number(e.target.value) })
                 }
                 disabled={!account}
               />
@@ -314,6 +364,7 @@ export default function Home() {
         </Dialog>
       </div>
 
+      {/* Listagem de tarefas */}
       <div className="flex flex-col gap-4 mt-10">
         {tasks.length === 0 ? (
           <div className="flex justify-center items-center h-full">
@@ -322,6 +373,7 @@ export default function Home() {
         ) : (
           tasks.map((task) => (
             <TaskCard
+                     id={task.id}
               key={task.title}
               title={task.title}
               description={task.description}

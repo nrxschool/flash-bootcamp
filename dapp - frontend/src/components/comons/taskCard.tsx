@@ -1,8 +1,10 @@
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
+import { Button } from "../ui/button";
 
 
 interface TaskCardProps {
+    id: string,
     description: string;
     completed: boolean;
     createdAt: string;
@@ -12,7 +14,7 @@ interface TaskCardProps {
     handleCompleteTask: (id: string) => void;
 }
 
-export function TaskCard({ title, description, createdAt, dueDate, stake }: TaskCardProps) {
+export function TaskCard({ id, title, completed, description, createdAt, dueDate, stake, handleCompleteTask }: TaskCardProps) {
     return (
         <Card>
             <CardHeader className="flex">
@@ -20,8 +22,8 @@ export function TaskCard({ title, description, createdAt, dueDate, stake }: Task
                     <h1 className="text-lg font-bold">{title}</h1>
 
                 </div>
-                <Badge variant="default">
-                    pendente
+                <Badge variant={completed ? "default" : "destructive"}>
+                    { completed ? "Completed" : "Pending"}
                 </Badge>
 
             </CardHeader>
@@ -33,7 +35,8 @@ export function TaskCard({ title, description, createdAt, dueDate, stake }: Task
                     <p className="text-sm text-muted-foreground">Data criada: {createdAt}</p>
                     <p className="text-sm text-muted-foreground">Data de vencimento: {dueDate}</p>
                 </div>
-                <span>{stake} wei</span>
+                <Button onClick={() => handleCompleteTask(id)}>Complete Task</Button>
+                <span>{stake} ETH</span>
             </CardFooter>
         </Card>
     )

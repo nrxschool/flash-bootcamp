@@ -1,5 +1,5 @@
 import { createPublicClient, createWalletClient, http, custom } from "viem";
-import { anvil } from "viem/chains";
+import { sepolia } from "viem/chains";
 
 // Declare ethereum property on Window interface
 declare global {
@@ -9,11 +9,16 @@ declare global {
 }
 
 export const publicClient = createPublicClient({
-  chain: anvil,
+  chain: sepolia,
   transport: http(),
 });
 
-export const walletClient = createWalletClient({
-  chain: anvil,
-  transport: custom(window.ethereum),
-});
+export function getWalletClient() {
+  if (typeof window !== "undefined" && window.ethereum) {
+    return createWalletClient({
+      chain: sepolia,
+      transport: custom(window.ethereum),
+    });
+  }
+  return null;
+}

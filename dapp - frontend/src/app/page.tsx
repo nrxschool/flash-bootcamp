@@ -17,7 +17,7 @@ import { TaskCard } from "@/components/comons/taskCard";
 import { useEffect, useState } from "react";
 import { Address, formatEther, getContract, parseEther } from "viem";
 import { contractABI, contractAddress } from "@/lib/abi";
-import { publicClient, walletClient } from "@/lib/client";
+import { publicClient, getWalletClient } from "@/lib/client";
 import { Switch } from "@/components/ui/switch";
 
 // Tipo para representar uma tarefa
@@ -51,6 +51,7 @@ export default function Home() {
 
   // Inicializa o contrato quando o componente é montado
   useEffect(() => {
+    const walletClient = getWalletClient();
     if (walletClient) {
       const contractInstance = getContract({
         address: contractAddress,
@@ -59,7 +60,7 @@ export default function Home() {
       });
       setContract(contractInstance);
     }
-  }, [walletClient]);
+  }, []);
 
   // Conecta a carteira MetaMask
   const connectWallet = async () => {
@@ -68,6 +69,8 @@ export default function Home() {
       return;
     }
 
+    const walletClient = getWalletClient();
+    if (!walletClient) return;
     try {
       const [address] = await walletClient.requestAddresses();
       setAccount(address);
@@ -123,7 +126,7 @@ export default function Home() {
     if (!account) return;
 
     try {
-      const response = await fetch("http://localhost:4000/graphql", {
+      const response = await fetch("https://indexer-backend.vercel.app/graphql", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -143,7 +146,7 @@ export default function Home() {
           id: task.id,
           title: task.title,
           description: task.description,
-          stake: formatEther(task.stake),
+          stake: task.stake,
           dueDate: task.dueDate,
           createdAt: task.createdAt,
           isCompleted: task.isCompleted,
@@ -167,6 +170,7 @@ export default function Home() {
 
   // Cria uma nova tarefa
   const handleCreateTask = async () => {
+    const walletClient = getWalletClient();
     if (!account || !walletClient) return;
     if (!newTask.title || !newTask.description || !newTask.dueDate) {
       console.error("Todos os campos são obrigatórios");
@@ -207,6 +211,7 @@ export default function Home() {
 
   // Marca tarefa como concluída
   const handleCompleteTask = async (id: string) => {
+    const walletClient = getWalletClient();
     if (!account || !walletClient || !id) return;
     try {
       const { request } = await publicClient.simulateContract({
